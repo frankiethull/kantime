@@ -1,0 +1,12 @@
+Package: kantime
+Title: Nixtla's KAN Time Series Model In R
+Version: 0.0.0.1
+Authors@R: 
+    person("Frankie T.", "Hull", , "frankiethull@gmail.com", role = c("aut", "cre"))
+Description: This package is a binding between Nixtla's neuralforecast Library, specifically KANs, and R's {modeltime} package. Nixtla's KAN is bound using {reticulate}, which is then ported into {parsnip} and bridged to {modeltime}.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+    modeltime

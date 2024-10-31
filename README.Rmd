@@ -1,0 +1,149 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# kantime
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+{kantime} is a minimal wrapper for Time Series Kolmogorov Arnold Networks in R. By binding nixtla's {neuralforecast} engine, KAN, from Python to use in R. Additional steps were made to bridged to {modeltime}, hence the name {kantime}! 
+
+## Installation
+
+You can install the development version of kantime like so:
+
+``` r
+devtools::install_github("frankiethull/kantime")
+```
+
+## Example
+
+This is a basic example showing the barebones {reticulate} Python wrappers. These are the core bindings before registering can configuring to {parsnip} and then bridging to {modeltime}.
+
+#### setup {kantime}
+kantime requires python and neuralforecast. 
+```{r}
+# load the R library -------------------
+library(kantime)
+
+# setup Python environment -------------
+# 1) create a virtual env   ~ 
+# kantime::create_neuralforecast_env()
+
+# 2) use the virtual env    ~
+kantime::use_neuralforecast_env()
+
+# 3) install neuralforecast ~  
+#kantime::install_neuralforecast()
+
+```
+
+##### example data for testing the library:
+```{r}
+## data comes from sister repo
+
+air_passengers_df <- readr::read_csv("https://raw.githubusercontent.com/frankiethull/nixtla-r-tutorial/refs/heads/main/airpassengersDF.csv", show_col_types = FALSE)
+
+Sys.sleep(1)
+
+train_df <- air_passengers_df |> dplyr::slice(1:132)
+test_df  <- air_passengers_df |> dplyr::anti_join(train_df)
+
+```
+
+#### barebone internals, no xregs, with conformal prediction
+
+note that nixtla's design requires a *unique_id* for each unique time series, *ds* for the time column, and *y* for the outcome variable. The internals work as minimal python wrappers to **fit** and **predict** on a time series data like so:
+```r
+
+# kan specs --
+kan_model_specs <- kantime:::kan_spec(h = 12L)
+
+# fit
+kan_model_fit   <- kantime:::conformal_fit(model_spec = kan_model_specs, df = train_df)
+
+# predict
+conf_kan_preds  <- kantime:::conformal_predict(
+                                     model_spec = kan_model_specs, 
+                                     model_fit = kan_model_fit,
+                                     level = 90L)
+
+```
+These internals are built thanks to {reticulate} and of using Nixtla's {neuralforecast} via R. While the idea works ok, the results and workflow can be clunky for R, especially when building for many unique IDs (many models for different time series loses pandas row IDs). Additionally, handling parallel processes in R via {reticulate} for cv, tuning and training in Python requires additional robustness.   
+    
+{kantime} is super experimental in it's design. Which is also why this is not a full {neuralforecast} binding. This binding in particular is going to leverage the root KAN model, a few helper utils, then bind the base KAN model to {parsnip} and bridge to {modeltime}. This loses pieces of the underlying Nixtla functionality but replacing with {tidymodels} & {modeltime} functionality. 
+
+#### {neuralforecast}'s kan with a {modeltime} bridge
+
+given our underlying internals, we can bind these functions to {modeltime} which is similar to registering a parsnip model but requires an additional bridge. The bridge implementation is shown below, but we have to add predict methods and there's quite a bit of underlying work that makes it fully functioning.  
+```r
+kan_bridge <- kantime:::kan_bridge_fit_impl(
+  x = train_df |> dplyr::select(-y),
+  y = train_df |> dplyr::pull(y),
+  h = 12L,
+  input_size = 24L,
+  max_steps = 10L,
+  freq = "ME"
+)
+
+kan_bridge |> predict()
+```
+
+#### {kantime} workflow within {modeltime}
+
+
+Remembering that once the model has been bridged to {modeltime}, we lose some of the underlying nixtla utilities, but get access to tidymodels + modeltime utilities in R. What's this mean? We can now use this KAN binding with tidymodels tools like `initial_time_split` and we can use leverage `modeltime`'s toolkit to further calibrate & validate KAN models. In fact, we went through these additional bridging steps to have a full suite of backtesting, ensembling, calibrating, and scoring tools that will be very familiar if already using {modeltime} and/or {tidymodels}. 
+
+```{r}
+library(parsnip)
+library(modeltime)
+
+# time split
+splits   <- rsample::initial_time_split(air_passengers_df, prop = .92)
+training <- rsample::training(splits)
+testing  <- rsample::testing(splits)
+
+# kantime fit
+kantime_fit <- kan(h = 12L,
+                   input_size = 24L,
+                   max_steps = 10L,
+                   freq = "ME") |>
+                set_engine("kan") |>
+               fit(y ~ ds + unique_id, data = training)
+
+# kantime predict
+kan_point_predictions <- 
+kantime_fit |>
+ modeltime_table() |>
+  modeltime_forecast(actual_data = training, new_data = testing) 
+
+kan_point_predictions |>
+  plot_modeltime_forecast(.conf_interval_show = FALSE, .interactive = FALSE)
+```
+
+
+
+##### To Do's 
+
+1) *KAN:* KAN is still univariate without xreg support. (I wasn't sure if this would work so started with only bridging a few KAN parameters.)      
+2) *KAN* could use more informative info when printed.       
+3) predict(...*type = "prob"*), by design, kantime wraps the conformal method of nixtla so prediction intervals could be mapped to predict() calls, by-passing the need to calibrate in R, depending on the situation.
+4) add in sample predictions to the modeltime bridge    
+5) *UX:* handle nixtla requirements, i.e. **y, ds and unique_id**, could be tidied within internals        
+6) *UI:* pandas/reticulate arg types! internals should handle numeric inputs as integers and pass to python for R programmer.        
+7) handle warnings like `NIXTLA_ID_AS_COL` and     
+8) `.nested.col = purrr::map2(...)` in final `modeltime_forecast`
+
+
