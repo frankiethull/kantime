@@ -113,7 +113,7 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
                        futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$KAN)
+  preds <- as.numeric(preds_forecast$KAN$tolist())
   # nixtla's conformals, include for type = "prob"
   # pred_lower <- preds_forecast[,3]
   # pred_upper <- preds_forecast[,4]
@@ -239,7 +239,7 @@ predict.rmok_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
                        futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$RMoK)
+  preds <- as.numeric(preds_forecast$RMoK$tolist())
   return(preds)
 
 }
