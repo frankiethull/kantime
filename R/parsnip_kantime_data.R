@@ -179,7 +179,7 @@ make_rmok <- \(){
     value         = list(
       interface = "data.frame",
       protect   = c("x", "y"),
-      func      = c(pkg = "kantime", fun = "kan_bridge_fit_impl"),
+      func      = c(pkg = "kantime", fun = "rmok_bridge_fit_impl"),
       defaults  = list()
     )
   )
