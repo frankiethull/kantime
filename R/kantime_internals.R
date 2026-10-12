@@ -29,7 +29,15 @@ conformal_fit <- \(model_spec = NULL, df = NULL, outcome = "y", conformal_method
 
 df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 
-  model_spec$fit(df = df,
+  # reticulate converts R Date to pandas object dtype; neuralforecast needs datetime
+  py <- reticulate::py
+  py$kantime_df <- reticulate::r_to_py(df)
+  reticulate::py_run_string(
+    "import pandas as pd\nkantime_df['ds'] = pd.to_datetime(kantime_df['ds'])"
+  )
+  py_df <- py$kantime_df
+
+  model_spec$fit(df = py_df,
                  # by default make kan have conformal preds
                  prediction_intervals = nf$utils$PredictionIntervals(method=conformal_method))
 }
@@ -40,7 +48,14 @@ conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, futr_d
     model_spec$predict(model_fit, level = list(level))
   } else {
     # future exogenous values required when the model was trained with xregs
-    model_spec$predict(model_fit, futr_df = futr_df, level = list(level))
+    # (fix ds dtype: reticulate converts R Date to object)
+    py <- reticulate::py
+    py$kantime_futr <- reticulate::r_to_py(futr_df)
+    reticulate::py_run_string(
+      "import pandas as pd\nkantime_futr['ds'] = pd.to_datetime(kantime_futr['ds'])"
+    )
+    py_futr <- py$kantime_futr
+    model_spec$predict(model_fit, futr_df = py_futr, level = list(level))
   }
 }
 
