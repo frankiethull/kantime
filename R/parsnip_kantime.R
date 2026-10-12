@@ -46,6 +46,11 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
 
    nixtla_df <- cbind(outcome, predictors)
 
+   # neuralforecast format: unique_id, ds, y; other columns become xregs
+   prepared  <- kantime:::prepare_nixtla_df(nixtla_df, outcome = "outcome")
+   nixtla_df <- prepared$df
+   xreg_cols <- prepared$xregs
+
    model_spec <- kantime:::kan_spec(h = h,
                                     input_size = input_size,
                                     max_steps  = max_steps,
@@ -54,7 +59,7 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     model_fit  <-  kantime:::conformal_fit(
                      model_spec = model_spec,
                      df = nixtla_df,
-                     outcome = "outcome",
+                     outcome = "y",
                      conformal_method = "conformal_error"
                   )
 
@@ -77,7 +82,7 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     class = "kan_bridge_fit_impl",
     models = list(model_fit = model_fit, model_spec = model_spec),
     data = modeltime_table,
-    extras = list(NULL), # add xregs TODO
+    extras = list(xregs = xreg_cols),
     desc = "KAN Model"
   )
 }
@@ -93,18 +98,22 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
   # SPECS
   specs       <- object$models$model_spec
 
-  # XREG, currently not implemented
-  # xreg_recipe <- object$extras$xreg_recipe
-  # xreg_matrix <- bake_xreg_recipe(xreg_recipe, new_data, format = "matrix")
+  # XREG: future exogenous values for the forecast horizon
+  xreg_cols <- object$extras$xregs
+  futr_df <- NULL
+  if (length(xreg_cols) > 0L) {
+    futr_df <- kantime:::prepare_futr_df(new_data, xreg_cols)
+  }
 
   # PREDICTIONS, CONFORMAL PREDS
   preds_forecast <- kantime:::conformal_predict(
                        model_spec = specs,
                        model_fit = model,
-                       level = level)
+                       level = level,
+                       futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$KAN)
+  preds <- as.numeric(preds_forecast$KAN$tolist())
   # nixtla's conformals, include for type = "prob"
   # pred_lower <- preds_forecast[,3]
   # pred_upper <- preds_forecast[,4]
@@ -165,6 +174,11 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
 
    nixtla_df <- cbind(outcome, predictors)
 
+   # neuralforecast format: unique_id, ds, y; other columns become xregs
+   prepared  <- kantime:::prepare_nixtla_df(nixtla_df, outcome = "outcome")
+   nixtla_df <- prepared$df
+   xreg_cols <- prepared$xregs
+
    model_spec <- kantime:::rmok_spec(h = h,
                                      input_size = input_size,
                                      max_steps  = max_steps,
@@ -173,7 +187,7 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     model_fit  <-  kantime:::conformal_fit(
                      model_spec = model_spec,
                      df = nixtla_df,
-                     outcome = "outcome",
+                     outcome = "y",
                      conformal_method = "conformal_error"
                   )
 
@@ -194,7 +208,7 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     class = "rmok_bridge_fit_impl",
     models = list(model_fit = model_fit, model_spec = model_spec),
     data = modeltime_table,
-    extras = list(NULL),
+    extras = list(xregs = xreg_cols),
     desc = "RMoK Model"
   )
 }
@@ -210,14 +224,22 @@ predict.rmok_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
   # SPECS
   specs       <- object$models$model_spec
 
+  # XREG: future exogenous values for the forecast horizon
+  xreg_cols <- object$extras$xregs
+  futr_df <- NULL
+  if (length(xreg_cols) > 0L) {
+    futr_df <- kantime:::prepare_futr_df(new_data, xreg_cols)
+  }
+
   # PREDICTIONS, CONFORMAL PREDS
   preds_forecast <- kantime:::conformal_predict(
                        model_spec = specs,
                        model_fit = model,
-                       level = level)
+                       level = level,
+                       futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$RMoK)
+  preds <- as.numeric(preds_forecast$RMoK$tolist())
   return(preds)
 
 }
