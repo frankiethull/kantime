@@ -7,4 +7,5 @@ nf <- NULL
   nf <<- reticulate::import("neuralforecast", delay_load = TRUE)
 
   make_kan()
+  make_rmok()
 }
