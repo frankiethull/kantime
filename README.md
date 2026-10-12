@@ -172,9 +172,9 @@ kan_point_predictions |>
 
 ##### To Do’s
 
-1)  *KAN:* KAN is still univariate without xreg support. (I wasn’t sure
-    if this would work so started with only bridging a few KAN
-    parameters.)  
+1)  *KAN/RMoK:* exogenous regressors are supported — extra predictor
+    columns flow through to neuralforecast, and future xreg values are
+    passed via `futr_df` at predict time.  
 2)  *KAN* could use more informative info when printed.  
 3)  predict(…*type = “prob”*), by design, kantime wraps the conformal
     method of nixtla so prediction intervals could be mapped to
