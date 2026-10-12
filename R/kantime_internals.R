@@ -38,3 +38,21 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL){
   model_spec$predict(model_fit, level = list(level))
 }
+
+# RMoK model specs --
+rmok_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
+  nf$NeuralForecast(
+    models = list(
+      nf$models$RMoK(
+          h=h,
+          input_size=input_size,
+          n_series=1L,
+          loss=nf$losses$pytorch$RMSE(),
+          max_steps=max_steps,
+          scaler_type='standard'
+      )
+    ),
+    freq=freq
+  )
+
+}
