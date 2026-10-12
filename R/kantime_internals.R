@@ -35,8 +35,57 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 }
 
 # prediction function ---
-conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL){
-  model_spec$predict(model_fit, level = list(level))
+conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, futr_df = NULL){
+  if (is.null(futr_df)) {
+    model_spec$predict(model_fit, level = list(level))
+  } else {
+    # future exogenous values required when the model was trained with xregs
+    model_spec$predict(model_fit, futr_df = futr_df, level = list(level))
+  }
+}
+
+# Prepare a data.frame for neuralforecast: ensure unique_id, ds, y.
+# Any other columns are treated as exogenous regressors by neuralforecast.
+# Returns list(df, xregs) where xregs are the exogenous column names.
+prepare_nixtla_df <- \(df, outcome = "y") {
+  df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
+
+  # date column -> ds (first Date/POSIXct column)
+  date_cols <- names(df)[vapply(df, function(col) inherits(col, c("Date", "POSIXct", "POSIXlt")), logical(1))]
+  if (length(date_cols) == 0L) {
+    cli::cli_abort("Could not find a date column for {.code ds}.")
+  }
+  ds_col <- date_cols[1]
+  if (ds_col != "ds") {
+    df <- df |> dplyr::rename(ds = !!rlang::sym(ds_col))
+  }
+
+  # unique_id: create a single dummy series if missing (local models)
+  if (!"unique_id" %in% names(df)) {
+    df$unique_id <- "series_1"
+  }
+
+  xregs <- setdiff(names(df), c("unique_id", "ds", "y"))
+  list(df = df, xregs = xregs)
+}
+
+# Build the future dataframe for predict() from new_data.
+# new_data has the date column and xreg values for the forecast horizon.
+prepare_futr_df <- \(new_data, xregs) {
+  date_cols <- names(new_data)[vapply(new_data, function(col) inherits(col, c("Date", "POSIXct", "POSIXlt")), logical(1))]
+  if (length(date_cols) == 0L) {
+    cli::cli_abort("Could not find a date column for {.code ds} in {.code new_data}.")
+  }
+  ds_col <- date_cols[1]
+  futr_df <- new_data
+  if (ds_col != "ds") {
+    futr_df <- futr_df |> dplyr::rename(ds = !!rlang::sym(ds_col))
+  }
+  if (!"unique_id" %in% names(futr_df)) {
+    futr_df$unique_id <- "series_1"
+  }
+  # keep only what neuralforecast needs, in a stable order
+  futr_df[, c("unique_id", "ds", xregs), drop = FALSE]
 }
 
 # RMoK model specs --
