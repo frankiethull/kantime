@@ -33,15 +33,9 @@ kantime requires python and neuralforecast.
 # load the R library -------------------
 library(kantime)
 
-# setup Python environment -------------
-# 1) create a virtual env   ~ 
-# kantime::create_neuralforecast_env()
-
-# 2) use the virtual env    ~
-kantime::use_neuralforecast_env()
-
-# 3) install neuralforecast ~  
-#kantime::install_neuralforecast()
+# Python dependencies are managed automatically via reticulate::py_require()
+# when the package loads. No manual virtualenv setup needed.
+library(kantime)
 ```
 
 ##### example data for testing the library:
