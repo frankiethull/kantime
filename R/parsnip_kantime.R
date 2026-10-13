@@ -61,9 +61,14 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
    }
 
    # Build nixtla dataframe with unique_id, ds, y, and xregs
+   # NB: convert Date to POSIXct for proper reticulate -> pandas conversion
+   ds_vals <- predictors[[date_col]]
+   if (inherits(ds_vals, "Date")) {
+     ds_vals <- as.POSIXct(ds_vals)
+   }
    nixtla_df <- data.frame(
      unique_id = "series_1",
-     ds = predictors[[date_col]],
+     ds = ds_vals,
      y = outcome,
      stringsAsFactors = FALSE
    )
@@ -129,9 +134,14 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
   future_df <- NULL
   if (!is.null(xreg_cols) && length(xreg_cols) > 0 && !is.null(new_data)) {
     # new_data has future dates and xreg values
+    # NB: convert Date to POSIXct for proper reticulate -> pandas conversion
+    fut_ds <- new_data[[date_col]]
+    if (inherits(fut_ds, "Date")) {
+      fut_ds <- as.POSIXct(fut_ds)
+    }
     future_df <- data.frame(
       unique_id = "series_1",
-      ds = new_data[[date_col]],
+      ds = fut_ds,
       stringsAsFactors = FALSE
     )
     for (col in xreg_cols) {
