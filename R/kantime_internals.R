@@ -1,7 +1,16 @@
 # initial functions from nixtla-r-tutorials ----
 
 # model specs --
-kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
+kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME", futr_exog_list = NULL){
+  # reticulate: ensure character vector becomes a Python list of strings,
+  # not a single string (which Python would iterate as characters)
+  if (!is.null(futr_exog_list)) {
+    futr_exog_list <- as.list(futr_exog_list)
+  }
+  # UI: coerce numerics to integers for python (R users write 12 not 12L)
+  h <- as.integer(h)
+  input_size <- as.integer(input_size)
+  max_steps <- as.integer(max_steps)
   nf$NeuralForecast(
     models = list(
       nf$models$KAN(
@@ -9,7 +18,8 @@ kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
           input_size=input_size,
           loss=nf$losses$pytorch$RMSE(),
           max_steps=max_steps,
-          scaler_type='standard'
+          scaler_type='standard',
+          futr_exog_list=futr_exog_list
       )
     ),
     freq=freq
@@ -17,8 +27,21 @@ kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
 
 }
 
+# suppress noisy python warnings during fit/predict (e.g. pytorch lightning
+# val_check_steps, nixtla id-column notices). issue #13.
+suppress_py_warnings <- \() {
+  reticulate::py_run_string(paste(
+    "import warnings",
+    "warnings.filterwarnings('ignore', message='.*val_check_steps.*')",
+    "warnings.filterwarnings('ignore', message='.*NIXTLA_ID_AS_COL.*')",
+    sep = "\n"
+  ))
+  invisible(NULL)
+}
+
 # fit model with given specs ---
 conformal_fit <- \(model_spec = NULL, df = NULL, outcome = "y", conformal_method = "conformal_error"){
+  suppress_py_warnings()
 
   # like `outcome`,
   # should do the same for ds and unique_id,
@@ -44,6 +67,7 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 
 # prediction function ---
 conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, futr_df = NULL){
+  suppress_py_warnings()
   if (is.null(futr_df)) {
     model_spec$predict(model_fit, level = list(level))
   } else {
@@ -105,6 +129,10 @@ prepare_futr_df <- \(new_data, xregs) {
 
 # RMoK model specs --
 rmok_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
+  # UI: coerce numerics to integers for python (R users write 12 not 12L)
+  h <- as.integer(h)
+  input_size <- as.integer(input_size)
+  max_steps <- as.integer(max_steps)
   nf$NeuralForecast(
     models = list(
       nf$models$RMoK(
