@@ -170,11 +170,35 @@ kan_point_predictions |>
 
 <img src="man/figures/README-unnamed-chunk-4-1.png" width="100%" />
 
+### RMoK example
+
+``` r
+# RMoK (Robust Mixture of Kernels) via neuralforecast
+rmok_fit <- rmok(h = 12L,
+                 input_size = 24L,
+                 max_steps = 10L,
+                 freq = "ME") |>
+              set_engine("rmok") |>
+             fit(y ~ ds + unique_id, data = training)
+
+# rmok predict
+rmok_point_predictions <- 
+rmok_fit |>
+ modeltime_table() |>
+  modeltime_forecast(actual_data = training, new_data = testing) 
+
+rmok_point_predictions |>
+  plot_modeltime_forecast(.conf_interval_show = FALSE, .interactive = FALSE)
+```
+
+<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+
 ##### To Do’s
 
-1)  *KAN:* KAN is still univariate without xreg support. (I wasn’t sure
-    if this would work so started with only bridging a few KAN
-    parameters.)  
+1)  ~~*KAN:* KAN is still univariate without xreg support.~~ **DONE:**
+    exogenous regressors are supported via `futr_exog_list`, extra
+    predictor columns flow through to neuralforecast. (RMoK does not
+    support xregs in neuralforecast 3.3.0 and errors clearly if given.)  
 2)  *KAN* could use more informative info when printed.  
 3)  predict(…*type = “prob”*), by design, kantime wraps the conformal
     method of nixtla so prediction intervals could be mapped to
