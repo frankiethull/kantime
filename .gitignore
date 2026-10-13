@@ -1,3 +1,32 @@
 .Rproj.user
 .Rhistory
 .RData
+.Ruserdata
+
+/.quarto/
+
+# R plot device output
+Rplots.pdf
+
+# PyTorch Lightning training logs + checkpoints (e.g. from neuralforecast runs)
+lightning_logs/
+checkpoints/
+*.ckpt
+
+# Rendered README chunks
+.vdoc*
+
+# R CMD check / build artifacts
+*.Rcheck/
+*.tar.gz
+
+# Python artifacts (reticulate / neuralforecast env)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS junk
+.DS_Store
+Thumbs.db

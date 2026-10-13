@@ -3,9 +3,12 @@
 # model specs --
 kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME", futr_exog_list = NULL){
   # reticulate: ensure character vector becomes a Python list of strings,
-  # not a single string (which Python would iterate as characters)
-  if (!is.null(futr_exog_list)) {
+  # not a single string (which Python would iterate as characters).
+  # Empty (character(0)) means "no xregs" -> keep NULL for python.
+  if (!is.null(futr_exog_list) && length(futr_exog_list) > 0L) {
     futr_exog_list <- as.list(futr_exog_list)
+  } else {
+    futr_exog_list <- NULL
   }
   # UI: coerce numerics to integers for python (R users write 12 not 12L)
   h <- as.integer(h)
@@ -29,14 +32,65 @@ kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME", futr_exog_l
 
 # suppress noisy python warnings during fit/predict (e.g. pytorch lightning
 # val_check_steps, nixtla id-column notices). issue #13.
+# Note: lightning resets filters on Trainer init, so LeafSpec DeprecationWarning
+# may still leak through — harmless, not the crash cause.
 suppress_py_warnings <- \() {
   reticulate::py_run_string(paste(
     "import warnings",
     "warnings.filterwarnings('ignore', message='.*val_check_steps.*')",
     "warnings.filterwarnings('ignore', message='.*NIXTLA_ID_AS_COL.*')",
+    "warnings.filterwarnings('ignore', message='.*LeafSpec.*')",
+    "warnings.filterwarnings('ignore', message='.*TreeSpec.*')",
+    "warnings.filterwarnings('ignore', module='.*_pytree.*')",
+    "warnings.filterwarnings('ignore', category=DeprecationWarning)",
+    "warnings.filterwarnings('ignore', category=FutureWarning)",
     sep = "\n"
   ))
   invisible(NULL)
+}
+
+# Extract a point-forecast column from neuralforecast predict() output.
+# reticulate auto-converts pandas DataFrames to R data.frames, so handle
+# both: R data.frame (preds[[model]]) and python objects (preds$MODEL$tolist()).
+extract_forecast_col <- \(preds_forecast, model = c("KAN", "RMoK")) {
+  model <- match.arg(model)
+  if (inherits(preds_forecast, "data.frame")) {
+    if (!model %in% names(preds_forecast)) {
+      cli::cli_abort("Forecast output has no column {.code {model}} (got: {paste(names(preds_forecast), collapse=', ')}).")
+    }
+    return(as.numeric(preds_forecast[[model]]))
+  }
+  # python pandas object path
+  as.numeric(reticulate::py_to_r(preds_forecast[[model]]$tolist()))
+}
+
+# Extract in-sample fitted values from predict_insample() output.
+# Returns a numeric vector aligned to training rows, or NA vector if
+# alignment is not possible (predict_insample is rolling, longer than train).
+extract_insample_col <- \(insample, n) {
+  if (inherits(insample, "data.frame")) {
+    cols <- names(insample)
+    model_col <- cols[!cols %in% c("unique_id", "ds", "y", "cutoff")][1]
+    if (is.na(model_col)) {
+      return(rep(NA_real_, n))
+    }
+    vec <- suppressWarnings(as.numeric(insample[[model_col]]))
+    # rolling insample is longer than training; only use if lengths match,
+    # otherwise fall back to NA (modeltime requires length n or 1)
+    if (length(vec) != n) {
+      return(rep(NA_real_, n))
+    }
+    return(vec)
+  }
+  # python pandas object path
+  py_cols <- reticulate::py_to_r(insample$columns$tolist())
+  model_col <- py_cols[!py_cols %in% c("unique_id", "ds", "y", "cutoff")][1]
+  vec <- reticulate::py_to_r(insample[model_col])
+  vec <- suppressWarnings(as.numeric(vec))
+  if (length(vec) != n) {
+    return(rep(NA_real_, n))
+  }
+  vec
 }
 
 # fit model with given specs ---

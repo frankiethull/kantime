@@ -64,17 +64,15 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
                      conformal_method = "conformal_error"
                   )
 
-# predict_insample TODO:
+ # predict_insample TODO:
     # fitted_values <- model_spec$predict_insample(step_size = 1L)
   # issue #10: in-sample predictions via predict_insample
+  # (reticulate converts pandas -> R data.frame; rolling output is longer
+  # than training, so extract_insample_col falls back to NA vector)
   fitted_values <- tryCatch({
     insample <- model_spec$predict_insample(step_size = 1L)
-    # predict_insample returns a pandas df; extract the model column
-    # (first column matching the model name, e.g. "KAN")
-    py_cols <- reticulate::py_to_r(insample$columns$tolist())
-    model_col <- py_cols[!py_cols %in% c("unique_id", "ds", "y")][1]
-    reticulate::py_to_r(insample[model_col])
-  }, error = function(e) NA)
+    kantime:::extract_insample_col(insample, nrow(nixtla_df))
+  }, error = function(e) rep(NA_real_, nrow(nixtla_df)))
 
     # Create the modeltime table
     modeltime_table <- tibble::tibble(
@@ -140,7 +138,8 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
                        futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$KAN$tolist())
+  # (reticulate converts pandas -> R data.frame, so handle both)
+  preds <- kantime:::extract_forecast_col(preds_forecast, model = "KAN")
   # nixtla's conformals, include for type = "prob"
   # pred_lower <- preds_forecast[,3]
   # pred_upper <- preds_forecast[,4]
@@ -228,10 +227,8 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
   # issue #10: in-sample predictions via predict_insample
   fitted_values <- tryCatch({
     insample <- model_spec$predict_insample(step_size = 1L)
-    py_cols <- reticulate::py_to_r(insample$columns$tolist())
-    model_col <- py_cols[!py_cols %in% c("unique_id", "ds", "y")][1]
-    reticulate::py_to_r(insample[model_col])
-  }, error = function(e) NA)
+    kantime:::extract_insample_col(insample, nrow(nixtla_df))
+  }, error = function(e) rep(NA_real_, nrow(nixtla_df)))
 
     # Create the modeltime table
     modeltime_table <- tibble::tibble(
@@ -293,7 +290,7 @@ predict.rmok_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
                        futr_df = futr_df)
 
   # Return predictions as numeric vector
-  preds <- as.numeric(preds_forecast$RMoK$tolist())
+  preds <- kantime:::extract_forecast_col(preds_forecast, model = "RMoK")
   return(preds)
 
 }

@@ -45,7 +45,12 @@ library(kantime)
 ```{r}
 ## data comes from sister repo
 
-air_passengers_df <- readr::read_csv("https://raw.githubusercontent.com/frankiethull/nixtla-r-tutorial/refs/heads/main/airpassengersDF.csv", show_col_types = FALSE)
+air_passengers_df <- arrow::read_csv_arrow("https://raw.githubusercontent.com/frankiethull/nixtla-r-tutorial/refs/heads/main/airpassengersDF.csv")
+
+air_passengers_df <- air_passengers_df |>
+    dplyr::mutate(
+      ds = as.Date(ds)
+    )
 
 Sys.sleep(1)
 
