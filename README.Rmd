@@ -33,21 +33,12 @@ devtools::install_github("frankiethull/kantime")
 This is a basic example showing the barebones {reticulate} Python wrappers. These are the core bindings before registering can configuring to {parsnip} and then bridging to {modeltime}.
 
 #### setup {kantime}
-kantime requires python and neuralforecast. 
+kantime requires Python and neuralforecast. Python dependencies are managed
+automatically via `reticulate::py_require()` when the package loads.
 ```{r}
 # load the R library -------------------
+# neuralforecast is installed automatically on first use
 library(kantime)
-
-# setup Python environment -------------
-# 1) create a virtual env   ~ 
-# kantime::create_neuralforecast_env()
-
-# 2) use the virtual env    ~
-kantime::use_neuralforecast_env()
-
-# 3) install neuralforecast ~  
-#kantime::install_neuralforecast()
-
 ```
 
 ##### example data for testing the library:
