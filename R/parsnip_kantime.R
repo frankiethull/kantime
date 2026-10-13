@@ -54,7 +54,8 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
    model_spec <- kantime:::kan_spec(h = h,
                                     input_size = input_size,
                                     max_steps  = max_steps,
-                                    freq       = freq)
+                                    freq       = freq,
+                                    futr_exog_list = xreg_cols)
 
     model_fit  <-  kantime:::conformal_fit(
                      model_spec = model_spec,
