@@ -158,6 +158,16 @@ prepare_nixtla_df <- \(df, outcome = "y") {
     df$unique_id <- "series_1"
   }
 
+  # parsnip's model.frame() hands character columns to the bridge as
+  # factors, and the factor column breaks reticulate conversion at predict
+  # time ("Not compatible with STRSXP"). Normalize to character ids so the
+  # pandas encoding is identical at fit and predict, and drop the
+  # model.frame "terms" attribute (dead weight for neuralforecast).
+  if (is.factor(df$unique_id)) {
+    df$unique_id <- as.character(df$unique_id)
+  }
+  attr(df, "terms") <- NULL
+
   xregs <- setdiff(names(df), c("unique_id", "ds", "y"))
   list(df = df, xregs = xregs)
 }
@@ -176,6 +186,17 @@ prepare_futr_df <- \(new_data, xregs) {
   }
   if (!"unique_id" %in% names(futr_df)) {
     futr_df$unique_id <- "series_1"
+  }
+  # Same normalization as prepare_nixtla_df: parsnip delivers ids as
+  # factors (breaks reticulate conversion) plus a "terms" attribute.
+  if (is.factor(futr_df$unique_id)) {
+    futr_df$unique_id <- as.character(futr_df$unique_id)
+  }
+  attr(futr_df, "terms") <- NULL
+  # Fail loudly on missing xregs instead of sending a short frame to python.
+  missing <- setdiff(xregs, names(futr_df))
+  if (length(missing) > 0L) {
+    cli::cli_abort("Missing exogenous regressor column(s) in {.code new_data}: {.code {missing}}.")
   }
   # keep only what neuralforecast needs, in a stable order
   futr_df[, c("unique_id", "ds", xregs), drop = FALSE]
