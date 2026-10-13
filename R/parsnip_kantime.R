@@ -75,7 +75,8 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
    model_spec <- kantime:::kan_spec(h = h,
                                     input_size = input_size,
                                     max_steps  = max_steps,
-                                    freq       = freq)
+                                    freq       = freq,
+                                    futr_exog_list = as.list(xreg_cols))
 
     model_fit  <-  kantime:::conformal_fit(
                      model_spec = model_spec,
@@ -145,7 +146,7 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
                        model_spec = specs,
                        model_fit = model,
                        level = level,
-                       df = future_df)
+                       futr_df = future_df)
 
   # Return predictions as numeric vector
   preds <- as.numeric(preds_forecast$KAN)

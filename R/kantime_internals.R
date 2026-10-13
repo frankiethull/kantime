@@ -1,7 +1,7 @@
 # initial functions from nixtla-r-tutorials ----
 
 # model specs --
-kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
+kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME", futr_exog_list = NULL){
   nf$NeuralForecast(
     models = list(
       nf$models$KAN(
@@ -9,7 +9,8 @@ kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME"){
           input_size=input_size,
           loss=nf$losses$pytorch$RMSE(),
           max_steps=max_steps,
-          scaler_type='standard'
+          scaler_type='standard',
+          futr_exog_list=futr_exog_list
       )
     ),
     freq=freq
@@ -35,10 +36,10 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 }
 
 # prediction function ---
-conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, df = NULL){
-  if (!is.null(df)) {
+conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, futr_df = NULL){
+  if (!is.null(futr_df)) {
     # Future exogenous regressors provided
-    model_spec$predict(model_fit, df = df, level = list(level))
+    model_spec$predict(model_fit, futr_df = futr_df, level = list(level))
   } else {
     model_spec$predict(model_fit, level = list(level))
   }
