@@ -1,8 +1,7 @@
 nf <- NULL
 
 .onLoad <- function(libname, pkgname) {
-
-  reticulate::use_virtualenv("nixtla-dev")
+  reticulate::py_require("neuralforecast")
 
   nf <<- reticulate::import("neuralforecast", delay_load = TRUE)
 
