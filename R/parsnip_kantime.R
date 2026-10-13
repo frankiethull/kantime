@@ -83,9 +83,27 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     class = "kan_bridge_fit_impl",
     models = list(model_fit = model_fit, model_spec = model_spec),
     data = modeltime_table,
-    extras = list(xregs = xreg_cols),
+    extras = list(
+      xregs = xreg_cols,
+      h = h, input_size = input_size, max_steps = max_steps, freq = freq
+    ),
     desc = "KAN Model"
   )
+}
+
+
+#' @export
+print.kan_bridge_fit_impl <- \(x, ...) {
+  e <- x$extras
+  cat("KAN Model (neuralforecast)\n")
+  cat("  h:", e$h, " input_size:", e$input_size,
+      " max_steps:", e$max_steps, " freq:", e$freq, "\n")
+  if (length(e$xregs) > 0L) {
+    cat("  xregs:", paste(e$xregs, collapse = ", "), "\n")
+  } else {
+    cat("  xregs: none\n")
+  }
+  invisible(x)
 }
 
 
@@ -216,9 +234,23 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     class = "rmok_bridge_fit_impl",
     models = list(model_fit = model_fit, model_spec = model_spec),
     data = modeltime_table,
-    extras = list(xregs = xreg_cols),
+    extras = list(
+      xregs = xreg_cols,
+      h = h, input_size = input_size, max_steps = max_steps, freq = freq
+    ),
     desc = "RMoK Model"
   )
+}
+
+
+#' @export
+print.rmok_bridge_fit_impl <- \(x, ...) {
+  e <- x$extras
+  cat("RMoK Model (neuralforecast)\n")
+  cat("  h:", e$h, " input_size:", e$input_size,
+      " max_steps:", e$max_steps, " freq:", e$freq, "\n")
+  cat("  xregs: none (RMoK does not support exogenous regressors)\n")
+  invisible(x)
 }
 
 
