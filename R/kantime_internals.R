@@ -27,8 +27,21 @@ kan_spec <- \(h = 12L, input_size = 24L, max_steps=20L, freq = "ME", futr_exog_l
 
 }
 
+# suppress noisy python warnings during fit/predict (e.g. pytorch lightning
+# val_check_steps, nixtla id-column notices). issue #13.
+suppress_py_warnings <- \() {
+  reticulate::py_run_string(paste(
+    "import warnings",
+    "warnings.filterwarnings('ignore', message='.*val_check_steps.*')",
+    "warnings.filterwarnings('ignore', message='.*NIXTLA_ID_AS_COL.*')",
+    sep = "\n"
+  ))
+  invisible(NULL)
+}
+
 # fit model with given specs ---
 conformal_fit <- \(model_spec = NULL, df = NULL, outcome = "y", conformal_method = "conformal_error"){
+  suppress_py_warnings()
 
   # like `outcome`,
   # should do the same for ds and unique_id,
@@ -54,6 +67,7 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 
 # prediction function ---
 conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, futr_df = NULL){
+  suppress_py_warnings()
   if (is.null(futr_df)) {
     model_spec$predict(model_fit, level = list(level))
   } else {
