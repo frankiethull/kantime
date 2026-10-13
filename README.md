@@ -192,22 +192,3 @@ rmok_point_predictions |>
 ```
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
-
-##### To Do’s
-
-1)  ~~*KAN:* KAN is still univariate without xreg support.~~ **DONE:**
-    exogenous regressors are supported via `futr_exog_list`, extra
-    predictor columns flow through to neuralforecast. (RMoK does not
-    support xregs in neuralforecast 3.3.0 and errors clearly if given.)  
-2)  *KAN* could use more informative info when printed.  
-3)  predict(…*type = “prob”*), by design, kantime wraps the conformal
-    method of nixtla so prediction intervals could be mapped to
-    predict() calls, by-passing the need to calibrate in R, depending on
-    the situation.
-4)  add in sample predictions to the modeltime bridge  
-5)  *UX:* handle nixtla requirements, i.e. **y, ds and unique_id**,
-    could be tidied within internals  
-6)  *UI:* pandas/reticulate arg types! internals should handle numeric
-    inputs as integers and pass to python for R programmer.  
-7)  handle warnings like `NIXTLA_ID_AS_COL` and  
-8)  `.nested.col = purrr::map2(...)` in final `modeltime_forecast`
