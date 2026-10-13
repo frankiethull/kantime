@@ -135,15 +135,24 @@ kan_point_predictions |>
 
 
 
-##### To Do's 
+### RMoK example
 
-1) *KAN:* KAN is still univariate without xreg support. (I wasn't sure if this would work so started with only bridging a few KAN parameters.)      
-2) *KAN* could use more informative info when printed.       
-3) predict(...*type = "prob"*), by design, kantime wraps the conformal method of nixtla so prediction intervals could be mapped to predict() calls, by-passing the need to calibrate in R, depending on the situation.
-4) add in sample predictions to the modeltime bridge    
-5) *UX:* handle nixtla requirements, i.e. **y, ds and unique_id**, could be tidied within internals        
-6) *UI:* pandas/reticulate arg types! internals should handle numeric inputs as integers and pass to python for R programmer.        
-7) handle warnings like `NIXTLA_ID_AS_COL` and     
-8) `.nested.col = purrr::map2(...)` in final `modeltime_forecast`
+```{r}
+# RMoK (Robust Mixture of Kernels) via neuralforecast
+rmok_fit <- rmok(h = 12L,
+                 input_size = 24L,
+                 max_steps = 10L,
+                 freq = "ME") |>
+              set_engine("rmok") |>
+             fit(y ~ ds + unique_id, data = training)
 
+# rmok predict
+rmok_point_predictions <- 
+rmok_fit |>
+ modeltime_table() |>
+  modeltime_forecast(actual_data = training, new_data = testing) 
+
+rmok_point_predictions |>
+  plot_modeltime_forecast(.conf_interval_show = FALSE, .interactive = FALSE)
+```
 
