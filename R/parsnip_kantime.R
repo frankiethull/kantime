@@ -66,7 +66,15 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
 
 # predict_insample TODO:
     # fitted_values <- model_spec$predict_insample(step_size = 1L)
-  fitted_values <- NA
+  # issue #10: in-sample predictions via predict_insample
+  fitted_values <- tryCatch({
+    insample <- model_spec$predict_insample(step_size = 1L)
+    # predict_insample returns a pandas df; extract the model column
+    # (first column matching the model name, e.g. "KAN")
+    py_cols <- reticulate::py_to_r(insample$columns$tolist())
+    model_col <- py_cols[!py_cols %in% c("unique_id", "ds", "y")][1]
+    reticulate::py_to_r(insample[model_col])
+  }, error = function(e) NA)
 
     # Create the modeltime table
     modeltime_table <- tibble::tibble(
@@ -217,7 +225,13 @@ rmok_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
                      conformal_method = "conformal_error"
                   )
 
-  fitted_values <- NA
+  # issue #10: in-sample predictions via predict_insample
+  fitted_values <- tryCatch({
+    insample <- model_spec$predict_insample(step_size = 1L)
+    py_cols <- reticulate::py_to_r(insample$columns$tolist())
+    model_col <- py_cols[!py_cols %in% c("unique_id", "ds", "y")][1]
+    reticulate::py_to_r(insample[model_col])
+  }, error = function(e) NA)
 
     # Create the modeltime table
     modeltime_table <- tibble::tibble(
