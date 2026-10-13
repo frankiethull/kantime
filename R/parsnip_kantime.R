@@ -44,7 +44,33 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
    outcome    <- y # Comes in as a vector
    predictors <- x # Comes in as a data.frame (dates and possible xregs)
 
-   nixtla_df <- cbind(outcome, predictors)
+   # Identify date column and xreg columns
+   # The date column is the one that parses as a date/time
+   date_col <- NULL
+   xreg_cols <- character(0)
+   for (col in names(predictors)) {
+     if (inherits(predictors[[col]], c("Date", "POSIXct", "POSIXlt"))) {
+       date_col <- col
+     } else if (is.numeric(predictors[[col]])) {
+       xreg_cols <- c(xreg_cols, col)
+     }
+   }
+   # Fallback: if no date column found, use the first column
+   if (is.null(date_col)) {
+     date_col <- names(predictors)[1]
+   }
+
+   # Build nixtla dataframe with unique_id, ds, y, and xregs
+   nixtla_df <- data.frame(
+     unique_id = "series_1",
+     ds = predictors[[date_col]],
+     y = outcome,
+     stringsAsFactors = FALSE
+   )
+   # Add xreg columns
+   for (col in xreg_cols) {
+     nixtla_df[[col]] <- predictors[[col]]
+   }
 
    model_spec <- kantime:::kan_spec(h = h,
                                     input_size = input_size,
@@ -54,7 +80,7 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     model_fit  <-  kantime:::conformal_fit(
                      model_spec = model_spec,
                      df = nixtla_df,
-                     outcome = "outcome",
+                     outcome = "y",
                      conformal_method = "conformal_error"
                   )
 
@@ -77,7 +103,10 @@ kan_bridge_fit_impl <- \(x, y, h, input_size, max_steps, freq, scale = NULL) {
     class = "kan_bridge_fit_impl",
     models = list(model_fit = model_fit, model_spec = model_spec),
     data = modeltime_table,
-    extras = list(NULL), # add xregs TODO
+    extras = list(
+      xreg_cols = xreg_cols,
+      date_col = date_col
+    ),
     desc = "KAN Model"
   )
 }
@@ -93,15 +122,30 @@ predict.kan_bridge_fit_impl <- \(object, new_data, level = 90L, ...) {
   # SPECS
   specs       <- object$models$model_spec
 
-  # XREG, currently not implemented
-  # xreg_recipe <- object$extras$xreg_recipe
-  # xreg_matrix <- bake_xreg_recipe(xreg_recipe, new_data, format = "matrix")
+  # XREG: build future dataframe with exogenous regressors if available
+  xreg_cols <- object$extras$xreg_cols
+  date_col <- object$extras$date_col
+  future_df <- NULL
+  if (!is.null(xreg_cols) && length(xreg_cols) > 0 && !is.null(new_data)) {
+    # new_data has future dates and xreg values
+    future_df <- data.frame(
+      unique_id = "series_1",
+      ds = new_data[[date_col]],
+      stringsAsFactors = FALSE
+    )
+    for (col in xreg_cols) {
+      if (col %in% names(new_data)) {
+        future_df[[col]] <- new_data[[col]]
+      }
+    }
+  }
 
   # PREDICTIONS, CONFORMAL PREDS
   preds_forecast <- kantime:::conformal_predict(
                        model_spec = specs,
                        model_fit = model,
-                       level = level)
+                       level = level,
+                       df = future_df)
 
   # Return predictions as numeric vector
   preds <- as.numeric(preds_forecast$KAN)

@@ -35,6 +35,11 @@ df <- df |> dplyr::rename(y = !!rlang::sym(outcome))
 }
 
 # prediction function ---
-conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL){
-  model_spec$predict(model_fit, level = list(level))
+conformal_predict <- \(model_spec = NULL, model_fit = NULL, level = NULL, df = NULL){
+  if (!is.null(df)) {
+    # Future exogenous regressors provided
+    model_spec$predict(model_fit, df = df, level = list(level))
+  } else {
+    model_spec$predict(model_fit, level = list(level))
+  }
 }
